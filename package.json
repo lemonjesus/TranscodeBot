@@ -1,0 +1,14 @@
+{
+  "name": "transcodebot",
+  "version": "1.0.0",
+  "description": "App that transcodes things put in one directory and puts them in another directory.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tucker Osman",
+  "license": "MIT",
+  "dependencies": {
+    "chokidar": "^3.0.1"
+  }
+}
