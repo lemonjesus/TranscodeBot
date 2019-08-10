@@ -20,6 +20,16 @@ TranscodeBot requires two volumes to be mounted for it to be useful.
 
 TranscodeBot will not back-transcode, meaning its `/output` directory is basically write-only.
 
+### All Supported ENV Vars
+Their usage is spotted throught the documentation, but here is the comprehensive list:
+
+* `FFMPEG_LOGS` - set to `true` to redirect FFMPEG output to the docker log.
+* `FORCE_CMD` - set to space-separated args to pass to FFMPEG instead of the default. See below.
+* `ALLOW_OVERWRITE` - never skip of the output file exists, always retranscode it.
+* `DELETE_SOURCE` - deletes the source file after transcoding is done. Use with caution.
+* `UID` - the user id to write as.
+* `GID` - the group id to write as.
+
 ## Operation
 TranscodeBot watches its input directory for incoming media and mirrors it into an output directory after transcode. For example:
 
@@ -27,7 +37,7 @@ TranscodeBot watches its input directory for incoming media and mirrors it into 
 /input/a/b/c.mp4 (H.264) -> /output/a/b/c.mkv (HEVC)
 ```
 
-There are some rules that TranscodeBot follows to  decide how to handle a file.
+There are some rules that TranscodeBot follows to decide how to handle a file.
 
 * If the output file exists, mark is as done and move on.
 * If the file is an srt, idx, jpg, jpeg, or png file, it will pass the file through untouched.
@@ -35,22 +45,28 @@ There are some rules that TranscodeBot follows to  decide how to handle a file.
 
 All transcoded files result in a `.mkv` file.
 
-## GPU Acceleration (Untested)
-GPU acceleration is technically supported. Even if you don't have the hardware for it, the image builds with support for CUDA. If you are sporting a GPU with NVENC with HEVC support (the newer the better), you must do two things to enable GPU transcoding:
+## Overriding the FFMPEG command
+You can specify your own command to run if you want different options from the default settings. Simply set FORCE_CMD to the arguments you wish to pass to ffmpeg. You can use the following internal variables:
+
+* `$input` - translates to the input file transcodebot is focused on
+* `$output` - the calculated output path of where the current file is going
+
+## GPU Acceleration
+GPU acceleration is supported. Even if you don't have the hardware for it, the image builds with support for CUDA. If you are sporting a GPU with NVENC with HEVC support (the newer the better), you must do two things to enable GPU transcoding:
 
 1. Ensure that you run the image with the NVIDIA Docker runtime.
-2. Set TranscodeBot's environment variable `FORCE_GPU` to `true`
+2. Set TranscodeBot's environment variable `FORCE_CMD` to be an FFMPEG command that uses hardware acceleration. Here's an example of the one I use for 480p cartoons:
+
+```
+-i $input -c:v hevc_nvenc -preset slow -rc-lookahead 32 -temporal-aq 1 -rc vbr_hq -2pass true -b:v 550k -c:a copy -c:s copy $output
+```
 
 Keep in mind that this will always produce inferior results to the default `libx265` transcoding. You are literally trading time for quality. For low quality, high volume transcodes like for old television shows, this is perfectly fine. For movies, stick to software transcoding. You'll be much happier.
 
 ## Debugging
 The log messages of this application are purposefully short and to the point. You see when something enters the queue and when something is considered done. If you need more information than that (for example, why something is failing), you almost certainly need to see the output of the FFMPEG process. It's messy, but you can do it by setting `FFMPEG_LOGS` to `true` in the container's environment. Keep in mind that FFMPEG's output looks really messy on readers that don't properly support carriage returns, so it may behoove you to watch the output live by either attaching to the container or by following the docker logs (`docker logs -F <container name>`).
 
-## To Do (pull requests welcome)
-* Configuration files (specifically for what files are passed through and the FFMPEG commands that are run)
-* Configurable CPU Cap because it currently uses 100% of the processor and it makes my closet *very* warm.
-* Add an option to delete input files when they are successfully processed (the default would be false).
-* ARM version of the Dockerfile so that people that use low power embedded processors who think they're *so much better than us power hungry super users* can also play along in their log cabins.
+Pull requests are always welcome.
 
 ## Credit
 * The FFMPEG image comes from jrottenberg/ffmpeg.

@@ -1,6 +1,7 @@
 const { spawnSync, spawn } = require('child_process');
 const { workerData, parentPort } = require('worker_threads');
 const fs = require('fs');
+const devnull = require('dev-null');
 
 const transcodeTypes = ['mkv', 'mp4', 'avi', 'mpeg', 'wmv'];
 const passthroughTypes = ['srt', 'idx', 'jpg', 'jpeg', 'png'];
@@ -28,7 +29,7 @@ fs.mkdirSync(dir, { recursive: true });
 outputFile = outputFile.join('/');
 
 //does the output path exist?
-if(fs.existsSync(outputFile)) {
+if(fs.existsSync(outputFile) && !process.env.ALLOW_OVERWRITE=='true') {
   parentPort.postMessage(`file ${outputFile} already exists, skipping ${inputFile}`);
   return;
 }
@@ -39,20 +40,26 @@ if(isHEVC(inputFile)) isTranscode = false;
 if(isTranscode) {
   //should we do this the gpu way or not?
   let transcodeProcess;
-  if(process.env.FORCE_GPU)
-    transcodeProcess = spawn('ffmpeg', ['-i', inputFile, '-c:v', 'hevc_nvenc', '-preset', 'slow', '-rc-lookahead:v', '32', '-temporal-aq:v', '1', '-weighted_pred:v', '1', '-rc', 'vbr_hq', '-2pass', 'true', '-c:a', 'copy', '-c:s', 'copy', outputFile]);
-  else
-    transcodeProcess = spawn('ffmpeg', ['-i', inputFile, '-c:v', 'libx265', '-preset', 'fast', '-x265-params', 'crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44', '-c:a', 'copy', '-c:s', 'copy', outputFile]);
+  if(process.env.FORCE_CMD) {
+    const args = process.env.FORCE_CMD.split(' ').map(x => x.replace('$input', inputFile)).map(x => x.replace('$output', outputFile))
+    transcodeProcess = spawn('ffmpeg', args);
+  } else {
+    transcodeProcess = spawn('ffmpeg', ['-y', '-i', inputFile, '-c:v', 'libx265', '-preset', 'fast', '-x265-params', 'crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44', '-c:a', 'copy', '-c:s', 'copy', outputFile]);
+  }
 
-  if(process.env.FFMPEG_LOGS) {
+  if(process.env.FFMPEG_LOGS=='true') {
     transcodeProcess.stderr.pipe(process.stderr);
     transcodeProcess.stdout.pipe(process.stdout);
+  } else {
+    transcodeProcess.stderr.pipe(devnull());
+    transcodeProcess.stdout.pipe(devnull());
   }
   transcodeProcess.on('exit', (code, signal) => {
     if(code==0) {
       parentPort.postMessage(`file ${inputFile} transcoded to ${outputFile}`);
       fs.chownSync(outputFile, process.env.UID, process.env.GID);
       fs.chmodSync(outputFile, process.env.FMODE);
+      if(process.env.DELETE_SOURCE=='true') fs.unlinkSync(inputFile);
     }
     else {
       if(fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
