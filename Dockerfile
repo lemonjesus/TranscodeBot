@@ -1,12 +1,20 @@
 FROM jrottenberg/ffmpeg:4.1-nvidia
 
 RUN apt-get update
-RUN apt-get install -y curl
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
-RUN apt-get install -y nodejs
+
+RUN apt-get install -y openssl
+#RUN \curl -L https://get.rvm.io | bash -s stable
+
+RUN \
+  apt-get update && apt-get install -y --no-install-recommends --no-install-suggests curl bzip2 build-essential libssl-dev libreadline-dev zlib1g-dev && \
+  rm -rf /var/lib/apt/lists/* && \
+  curl -L https://github.com/rbenv/ruby-build/archive/v20200224.tar.gz | tar -zxvf - -C /tmp/ && \
+  cd /tmp/ruby-build-* && ./install.sh && cd / && \
+  ruby-build -v 2.6.5 /usr/local && rm -rfv /tmp/ruby-build-*
+
+RUN gem install rb-inotify
 
 WORKDIR /app
-COPY index.js /app/index.js
-COPY ffmpeg-worker.js /app/ffmpeg-worker.js
-COPY package.json /app/package.json
-RUN npm install
+COPY TranscodeBot.rb /app/TranscodeBot.rb
+
+ENTRYPOINT ["ruby", "TranscodeBot.rb"]
