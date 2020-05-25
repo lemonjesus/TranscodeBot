@@ -18,9 +18,13 @@ def can_transcode?(file)
 end
 
 def correct_permissions(file)
-  $logger.info "correcting permissions on #{file.to_s}"
-  File.chmod(ENV["FMODE"].to_i(8), file.to_s) if ENV["FMODE"]
-  File.chown(ENV["UID"].to_i, ENV["GID"].to_i, file.to_s) if ENV["UID"] && ENV["GID"]
+  if (ENV["FMODE"] && ENV["UID"] && ENV["GID"])
+    $logger.info "correcting permissions on #{file.to_s}"
+    File.chmod(ENV["FMODE"].to_i(8), file.to_s) if ENV["FMODE"]
+    File.chown(ENV["UID"].to_i, ENV["GID"].to_i, file.to_s) if ENV["UID"] && ENV["GID"]
+  else
+    $logger.info "not correcting permisions on #{file.to_s} - FMODE, UID, or GID missing."
+  end
 end
 
 def is_hevc?(file)
