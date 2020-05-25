@@ -50,7 +50,7 @@ end
 
 def transcode(input, output)
   command = ENV["FORCE_CMD"]
-  command ||= "ffmpeg -y -i \"$input\" -max_muxing_queue_size 9999 -c:v libx265 -preset fast -x265-params crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44 -c:a copy -c:s copy \"$output\""
+  command ||= "ffmpeg -y -i \"$input\" -map 0:v -map 0:a -max_muxing_queue_size 9999 -c:v libx265 -preset fast -x265-params crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44 -c:a copy -c:s copy \"$output\""
   command.gsub! "$input", input.to_s
   command.gsub! "$output", output.to_s
   out, error, status = Open3.capture3(command)
