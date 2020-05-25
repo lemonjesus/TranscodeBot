@@ -38,7 +38,7 @@ def is_whitelisted?(file)
 end
 
 def mkdirs(file)
-  FileUtils.mkdir_p(file.parent, mode: ENV["FMODE"].to_i(8))
+  FileUtils.mkdir_p(file.parent)
   correct_permissions(file.parent)
 end
 
@@ -71,7 +71,7 @@ def process_file(input_filename)
   input_file = Pathname.new(input_filename)
   relative = Pathname.new(input_file).relative_path_from Pathname.new($input_dir)
   ext = input_file.extname
-  new_ext = is_whitelisted?(input_file) : ".mkv" : ext
+  new_ext = is_whitelisted?(input_file) ? ext : ".mkv"
   intermediate_file = Pathname.new("/tmp/#{relative.to_s.gsub(ext, new_ext)}")
   output_file = Pathname.new("#{$output_dir}/#{relative.to_s.gsub(ext, new_ext)}")
 
@@ -110,6 +110,7 @@ def process_file(input_filename)
 end
 
 def enqueue_file(file)
+  $logger.info "enqueuing #{file}"
   $queue << file
 end
 
@@ -121,7 +122,7 @@ worker = Thread.new do
   end
 end
 
-Dir['**/*'].reject {|fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if ENV["ENQUEUE_ON_START"]
+Dir["#{$input_dir}/**/*"].reject {|fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if ENV["ENQUEUE_ON_START"]
 
 notifier = INotify::Notifier.new
 notifier.watch($input_dir, :close_write, :moved_to, :recursive) do |event|
