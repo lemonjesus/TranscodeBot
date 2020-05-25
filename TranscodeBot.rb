@@ -67,8 +67,9 @@ def process_file(input_filename)
   input_file = Pathname.new(input_filename)
   relative = Pathname.new(input_file).relative_path_from Pathname.new($input_dir)
   ext = input_file.extname
-  intermediate_file = Pathname.new("/tmp/#{relative.to_s.gsub(ext, ".mkv")}")
-  output_file = Pathname.new("#{$output_dir}/#{relative.to_s.gsub(ext, ".mkv")}")
+  new_ext = is_whitelisted?(input_file) : ".mkv" : ext
+  intermediate_file = Pathname.new("/tmp/#{relative.to_s.gsub(ext, new_ext)}")
+  output_file = Pathname.new("#{$output_dir}/#{relative.to_s.gsub(ext, new_ext)}")
 
   $logger.info "working on #{input_file} -> #{output_file}"
   mkdirs intermediate_file
