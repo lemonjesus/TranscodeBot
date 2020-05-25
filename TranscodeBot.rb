@@ -116,6 +116,8 @@ worker = Thread.new do
   end
 end
 
+Dir['**/*'].reject {|fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if ENV["ENQUEUE_ON_START"]
+
 notifier = INotify::Notifier.new
 notifier.watch($input_dir, :close_write, :recursive) do |event|
   if File.file?(event.absolute_name)
