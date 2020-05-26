@@ -1,5 +1,8 @@
 FROM jrottenberg/ffmpeg:4.1-nvidia
 
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+
 RUN apt-get update
 
 RUN apt-get install -y openssl

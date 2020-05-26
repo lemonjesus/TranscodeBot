@@ -18,9 +18,13 @@ def can_transcode?(file)
 end
 
 def correct_permissions(file)
-  $logger.info "correcting permissions on #{file.to_s}"
-  File.chmod(ENV["FMODE"].to_i(8), file.to_s) if ENV["FMODE"]
-  File.chown(ENV["UID"].to_i, ENV["GID"].to_i, file.to_s) if ENV["UID"] && ENV["GID"]
+  if (ENV["FMODE"] && ENV["UID"] && ENV["GID"])
+    $logger.info "correcting permissions on #{file.to_s}"
+    File.chmod(ENV["FMODE"].to_i(8), file.to_s) if ENV["FMODE"]
+    File.chown(ENV["UID"].to_i, ENV["GID"].to_i, file.to_s) if ENV["UID"] && ENV["GID"]
+  else
+    $logger.info "not correcting permisions on #{file.to_s} - FMODE, UID, or GID missing."
+  end
 end
 
 def is_hevc?(file)
@@ -34,7 +38,7 @@ def is_whitelisted?(file)
 end
 
 def mkdirs(file)
-  FileUtils.mkdir_p(file.parent, mode: ENV["FMODE"].to_i(8))
+  FileUtils.mkdir_p(file.parent)
   correct_permissions(file.parent)
 end
 
@@ -50,7 +54,7 @@ end
 
 def transcode(input, output)
   command = ENV["FORCE_CMD"]
-  command ||= "ffmpeg -y -i \"$input\" -max_muxing_queue_size 9999 -c:v libx265 -preset fast -x265-params crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44 -c:a copy -c:s copy \"$output\""
+  command ||= "ffmpeg -y -i \"$input\" -map 0:v -map 0:a -max_muxing_queue_size 9999 -c:v libx265 -preset fast -x265-params crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44 -c:a copy -c:s copy \"$output\""
   command.gsub! "$input", input.to_s
   command.gsub! "$output", output.to_s
   out, error, status = Open3.capture3(command)
@@ -67,8 +71,9 @@ def process_file(input_filename)
   input_file = Pathname.new(input_filename)
   relative = Pathname.new(input_file).relative_path_from Pathname.new($input_dir)
   ext = input_file.extname
-  intermediate_file = Pathname.new("/tmp/#{relative.to_s.gsub(ext, ".mkv")}")
-  output_file = Pathname.new("#{$output_dir}/#{relative.to_s.gsub(ext, ".mkv")}")
+  new_ext = is_whitelisted?(input_file) ? ext : ".mkv"
+  intermediate_file = Pathname.new("/tmp/#{relative.to_s.gsub(ext, new_ext)}")
+  output_file = Pathname.new("#{$output_dir}/#{relative.to_s.gsub(ext, new_ext)}")
 
   $logger.info "working on #{input_file} -> #{output_file}"
   mkdirs intermediate_file
@@ -105,6 +110,7 @@ def process_file(input_filename)
 end
 
 def enqueue_file(file)
+  $logger.info "enqueuing #{file}"
   $queue << file
 end
 
@@ -116,8 +122,10 @@ worker = Thread.new do
   end
 end
 
+Dir["#{$input_dir}/**/*"].reject {|fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if ENV["ENQUEUE_ON_START"]
+
 notifier = INotify::Notifier.new
-notifier.watch($input_dir, :close_write, :recursive) do |event|
+notifier.watch($input_dir, :close_write, :moved_to, :recursive) do |event|
   if File.file?(event.absolute_name)
     $logger.info("file created: #{event.absolute_name}")
     enqueue_file(event.absolute_name)

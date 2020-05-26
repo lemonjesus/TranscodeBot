@@ -26,7 +26,8 @@ Their usage is spotted throught the documentation, but here is the comprehensive
 * `FFMPEG_LOGS` - set to `true` to redirect FFMPEG output to the docker log.
 * `FORCE_CMD` - set to space-separated args to pass to FFMPEG instead of the default. See below.
 * `ALLOW_OVERWRITE` - never skip of the output file exists, always retranscode it.
-* **DEPRECATED IN RUBY VERSION** `DELETE_SOURCE` - deletes the source file after transcoding is done. Use with caution.
+* `ENQUEUE_ON_START` - on bot startup, add all of the files currently in the input directory to the queue to be processed. Defaults to false.
+* **REMOVED IN RUBY VERSION** `DELETE_SOURCE` - deletes the source file after transcoding is done. Use with caution.
 * `UID` - the user id to write as.
 * `GID` - the group id to write as.
 
