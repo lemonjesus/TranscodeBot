@@ -116,7 +116,7 @@ end
 
 worker = Thread.new do
   loop do
-    file = $queue.pop
+    file = $queue.shift
     process_file(file) if file
     sleep 1 unless file
   end
