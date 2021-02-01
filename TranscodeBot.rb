@@ -34,7 +34,7 @@ def is_hevc?(file)
 end
 
 def is_whitelisted?(file)
-  %w[.srt .idx .jpg .jpeg .png].include? file.extname.downcase
+  %w[.srt .sub .idx .jpg .jpeg .png].include? file.extname.downcase
 end
 
 def mkdirs(file)
@@ -53,7 +53,7 @@ def should_passthrough?(file)
 end
 
 def transcode(input, output)
-  command = ENV["FORCE_CMD"]
+  command = ENV["FORCE_CMD"].dup
   command ||= "ffmpeg -y -i \"$input\" -map 0:v:0 -map 0:a -map 0:s? -max_muxing_queue_size 9999 -c:v libx265 -preset fast -x265-params crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44 -c:a copy -c:s copy \"$output\""
   command.gsub! "$input", input.to_s
   command.gsub! "$output", output.to_s
@@ -97,9 +97,9 @@ def process_file(input_filename)
       correct_permissions output_file
       intermediate_file.delete
       # input_file.delete if ENV["DELETE_SOURCE"]
-      $logger.info "transcoding done, took #{Time.now - start_time} seconds"
+      $logger.info "transcoding done, took #{Time.now - start_time} seconds, #{queue.size} items remaining"
     else
-      $logger.error "transcode failed, took #{Time.now - start_time} seconds"
+      $logger.error "transcode failed, took #{Time.now - start_time} seconds, #{queue.size} items remaining"
     end
   else
     $logger.info "not passing through and not on the list of transcodable media. skipping."
@@ -116,7 +116,7 @@ end
 
 worker = Thread.new do
   loop do
-    file = $queue.pop
+    file = $queue.shift
     process_file(file) if file
     sleep 1 unless file
   end
