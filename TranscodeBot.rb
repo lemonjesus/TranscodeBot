@@ -34,7 +34,7 @@ def is_hevc?(file)
 end
 
 def is_whitelisted?(file)
-  %w[.srt .idx .jpg .jpeg .png].include? file.extname.downcase
+  %w[.srt .sub .idx .jpg .jpeg .png].include? file.extname.downcase
 end
 
 def mkdirs(file)
