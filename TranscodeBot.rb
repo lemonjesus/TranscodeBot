@@ -97,9 +97,9 @@ def process_file(input_filename)
       correct_permissions output_file
       intermediate_file.delete
       # input_file.delete if ENV["DELETE_SOURCE"]
-      $logger.info "transcoding done, took #{Time.now - start_time} seconds, #{queue.size} items remaining"
+      $logger.info "transcoding done, took #{Time.now - start_time} seconds, #{$queue.size} items remaining"
     else
-      $logger.error "transcode failed, took #{Time.now - start_time} seconds, #{queue.size} items remaining"
+      $logger.error "transcode failed, took #{Time.now - start_time} seconds, #{$queue.size} items remaining"
     end
   else
     $logger.info "not passing through and not on the list of transcodable media. skipping."
