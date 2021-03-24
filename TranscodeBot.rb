@@ -23,7 +23,7 @@ def correct_permissions(file)
     File.chmod(ENV["FMODE"].to_i(8), file.to_s) if ENV["FMODE"]
     File.chown(ENV["UID"].to_i, ENV["GID"].to_i, file.to_s) if ENV["UID"] && ENV["GID"]
   else
-    $logger.info "not correcting permisions on #{file.to_s} - FMODE, UID, or GID missing."
+    $logger.info "not correcting permissions on #{file.to_s} - FMODE, UID, or GID missing."
   end
 end
 
@@ -78,8 +78,11 @@ def process_file(input_filename)
   $logger.info "working on #{input_file} -> #{output_file}"
   mkdirs intermediate_file
 
+  unless input_file.exist?
+    $logger.info "input #{input_file} no longer exists. skipping."
+
   if output_file.exist? && !ENV["ALLOW_OVERWRITE"]
-    $logger.info "output #{output_file} already exists. skipping"
+    $logger.info "output #{output_file} already exists. skipping."
     return
   end
 
