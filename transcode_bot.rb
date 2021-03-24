@@ -3,25 +3,57 @@ require "open3"
 require "rb-inotify"
 require "pathname"
 require "fileutils"
+require "yaml"
 
 $stdout.sync = true
 
 $logger = Logger.new $stdout
-$input_dir = ENV["INPUT_DIR"] || "/input"
-$output_dir = ENV["OUTPUT_DIR"] || "/output"
 $queue = []
 
 $logger.info "TranscodeBot started"
 
+class Config
+  attr_reader :config
+
+  DEFAULT_CONFIG = {
+    input_dir: "/input",
+    output_dir: "/output",
+    transcode: %w[mkv mp4 avi mpeg wmv],
+    passthrough: %w[srt sub idx jpg jpeg png],
+    log_level: :warn,
+    ffmpeg_logs: false,
+    allow_overwrite: false,
+    enqueue_on_start: true,
+  }.freeze
+
+  def self.load_config
+    file = ARGV[0] || "config.yml"
+    if File.exist?(file)
+      DEFAULT_CONFIG.merge(YAML.load_file(file).transform_keys(&:to_sym))
+    else
+      DEFAULT_CONFIG
+    end
+  end
+
+  def self.method_missing(m, *_args)
+    @config ||= load_config
+    @config[m]
+  end
+
+  def self.respond_to_missing?
+    true
+  end
+end
+
 def can_transcode?(file)
-  %w[.mkv .mp4 .avi .mpeg .wmv].include? file.extname.downcase
+  Config.transcode.include? file.extname.downcase
 end
 
 def correct_permissions(file)
-  if ENV["FMODE"] && ENV["UID"] && ENV["GID"]
+  if Config.fmode && Config.uid && Config.gid
     $logger.info "correcting permissions on #{file}"
-    File.chmod(ENV["FMODE"].to_i(8), file.to_s) if ENV["FMODE"]
-    File.chown(ENV["UID"].to_i, ENV["GID"].to_i, file.to_s) if ENV["UID"] && ENV["GID"]
+    File.chmod(Config.fmode.to_i(8), file.to_s) if Config.fmode
+    File.chown(Config.uid.to_i, Config.gid.to_i, file.to_s) if Config.uid && Config.gid
   else
     $logger.info "not correcting permissions on #{file} - FMODE, UID, or GID missing."
   end
@@ -34,7 +66,7 @@ def hevc?(file)
 end
 
 def whitelisted?(file)
-  %w[.srt .sub .idx .jpg .jpeg .png].include? file.extname.downcase
+  Config.passthrough.include? file.extname.downcase
 end
 
 def mkdirs(file)
@@ -43,7 +75,7 @@ def mkdirs(file)
 end
 
 def move(from, to)
-  File.delete from if ENV["ALLOW_OVERWRITE"]
+  File.delete from if Config.allow_overwrite
   mkdirs Pathname.new(to)
   FileUtils.copy from, to
 end
@@ -53,7 +85,7 @@ def should_passthrough?(file)
 end
 
 def transcode(input, output)
-  command = ENV["FORCE_CMD"].dup
+  command = Config.force_cmd.dup
   command ||= "ffmpeg -y -i \"$input\" -map 0:v:0 -map 0:a -map 0:s? -max_muxing_queue_size 9999 -c:v libx265 -preset fast -x265-params crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44 -c:a copy -c:s copy \"$output\""
   command.gsub! "$input", input.to_s
   command.gsub! "$output", output.to_s
@@ -69,19 +101,22 @@ end
 def process_file(input_filename)
   # calculate filenames
   input_file = Pathname.new(input_filename)
-  relative = Pathname.new(input_file).relative_path_from Pathname.new($input_dir)
+  relative = Pathname.new(input_file).relative_path_from Pathname.new(Config.input_dir)
   ext = input_file.extname
   new_ext = whitelisted?(input_file) ? ext : ".mkv"
   intermediate_file = Pathname.new("/tmp/#{relative.to_s.gsub(ext, new_ext)}")
-  output_file = Pathname.new("#{$output_dir}/#{relative.to_s.gsub(ext, new_ext)}")
+  output_file = Pathname.new("#{Config.output_dir}/#{relative.to_s.gsub(ext, new_ext)}")
 
   $logger.info "working on #{input_file} -> #{output_file}"
   mkdirs intermediate_file
 
-  $logger.info "input #{input_file} no longer exists. skipping." unless input_file.exist?
+  unless input_file.exist?
+    $logger.info "input #{input_file} no longer exists. skipping."
+    return
+  end
 
-  if output_file.exist? && !ENV["ALLOW_OVERWRITE"]
-    $logger.info "output #{output_file} already exists. skipping."
+  if output_file.exist? && !Config.allow_overwrite
+    $logger.info "output #{output_file} already exists. skipping"
     return
   end
 
@@ -98,7 +133,6 @@ def process_file(input_filename)
       move intermediate_file, output_file
       correct_permissions output_file
       intermediate_file.delete
-      # input_file.delete if ENV["DELETE_SOURCE"]
       $logger.info "transcoding done, took #{Time.now - start_time} seconds, #{$queue.size} items remaining"
     else
       $logger.error "transcode failed, took #{Time.now - start_time} seconds, #{$queue.size} items remaining"
@@ -124,10 +158,10 @@ Thread.new do
   end
 end
 
-Dir["#{$input_dir}/**/*"].reject { |fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if ENV["ENQUEUE_ON_START"]
+Dir["#{Config.input_dir}/**/*"].reject { |fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if Config.enqueue_on_start
 
 notifier = INotify::Notifier.new
-notifier.watch($input_dir, :close_write, :moved_to, :recursive) do |event|
+notifier.watch(Config.input_dir, :close_write, :moved_to, :recursive) do |event|
   if File.file?(event.absolute_name)
     $logger.info("file created: #{event.absolute_name}")
     enqueue_file(event.absolute_name)

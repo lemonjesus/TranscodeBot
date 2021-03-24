@@ -15,21 +15,14 @@ This should go quick since it just needs to download FFMPEG, build Ruby, and cop
 ## Usage
 TranscodeBot requires two volumes to be mounted for it to be useful.
 
-* `/input` - is your watch directory. This can be mounted as Read-Only. When a file is added to this directory, TranscodeBot will add it to its processing queue. **New in the Ruby Version: only added files, not preexisting files, will be added to the queue.**
+* `/input` - is your watch directory. This can be mounted as Read-Only. When a file is added to this directory, TranscodeBot will add it to its processing queue. 
 * `/output` - Where you want the movie to go. Because TranscodeBot preserves file paths (see below), you can make your output the same place you store and serve your media for a more automated pipeline.
+* `/app/config.yml` - Map this volume to your config file, if you have one.
 
 TranscodeBot will not back-transcode, meaning its `/output` directory is basically write-only.
 
-### All Supported ENV Vars
-Their usage is spotted throught the documentation, but here is the comprehensive list:
-
-* `FFMPEG_LOGS` - set to `true` to redirect FFMPEG output to the docker log.
-* `FORCE_CMD` - set to space-separated args to pass to FFMPEG instead of the default. See below.
-* `ALLOW_OVERWRITE` - never skip of the output file exists, always retranscode it.
-* `ENQUEUE_ON_START` - on bot startup, add all of the files currently in the input directory to the queue to be processed. Defaults to false.
-* **REMOVED IN RUBY VERSION** `DELETE_SOURCE` - deletes the source file after transcoding is done. Use with caution.
-* `UID` - the user id to write as.
-* `GID` - the group id to write as.
+## Configuration
+All configuration options are documented in the example `config.yml` file with their defaults. In Docker, this file should be mapped as a volume to `/app/config.yml`. If you do not supply one, the defaults are used.
 
 ## Operation
 TranscodeBot watches its input directory for incoming media and mirrors it into an output directory after transcode. For example:
@@ -47,7 +40,7 @@ There are some rules that TranscodeBot follows to decide how to handle a file.
 All transcoded files result in a `.mkv` file.
 
 ## Overriding the FFMPEG command
-You can specify your own command to run if you want different options from the default settings. Simply set FORCE_CMD to the command you wish to run. **New in the Ruby Version: this is the full command, not just the arguments `ffmpeg` is receiving. `ffmpeg` is no longer assumed.** You can use the following internal variables:
+You can specify your own command to run if you want different options from the default settings. Simply set `force_cmd` to the command you wish to run. **This is the full command, not just the arguments `ffmpeg` is receiving. `ffmpeg` is no longer assumed.** You can use the following internal variables:
 
 * `$input` - translates to the input file transcodebot is focused on
 * `$output` - the calculated output path of where the current file is going
@@ -56,7 +49,7 @@ You can specify your own command to run if you want different options from the d
 GPU acceleration is supported. Even if you don't have the hardware for it, the image builds with support for CUDA. If you are sporting a GPU with NVENC with HEVC support (the newer the better), you must do two things to enable GPU transcoding:
 
 1. Ensure that you run the image with the NVIDIA Docker runtime.
-2. Set TranscodeBot's environment variable `FORCE_CMD` to be an FFMPEG command that uses hardware acceleration. Here's an example of the one I use for 480p cartoons:
+2. Set TranscodeBot's config variable `force_cmd` to be an FFMPEG command that uses hardware acceleration. Here's an example of the one I use for 480p cartoons:
 
 ```
 ffmpeg -i $input -c:v hevc_nvenc -preset slow -rc-lookahead 32 -temporal-aq 1 -rc vbr_hq -2pass true -b:v 550k -c:a copy -c:s copy $output
@@ -65,7 +58,7 @@ ffmpeg -i $input -c:v hevc_nvenc -preset slow -rc-lookahead 32 -temporal-aq 1 -r
 Keep in mind that this will always produce inferior results to the default `libx265` transcoding. You are literally trading time for quality. For low quality, high volume transcodes like for old television shows, this is perfectly fine. For movies, stick to software transcoding. You'll be much happier.
 
 ## Debugging
-The log messages of this application are purposefully short and to the point. You see when something enters the queue and when something is considered done. If you need more information than that (for example, why something is failing), you almost certainly need to see the output of the FFMPEG process. It's messy, but you can do it by setting `FFMPEG_LOGS` to `true` in the container's environment. Keep in mind that FFMPEG's output looks really messy on readers that don't properly support carriage returns, so it may behoove you to watch the output live by either attaching to the container or by following the docker logs (`docker logs -F <container name>`).
+The log messages of this application are purposefully short and to the point. You see when something enters the queue and when something is considered done. If you need more information than that (for example, why something is failing), you almost certainly need to see the output of the FFMPEG process. It's messy, but you can do it by setting `ffmpeg_logs` to `true` in the config file. Keep in mind that FFMPEG's output looks really messy on readers that don't properly support carriage returns, so it may behoove you to watch the output live by either attaching to the container or by following the docker logs (`docker logs -F <container name>`).
 
 Pull requests are always welcome.
 
