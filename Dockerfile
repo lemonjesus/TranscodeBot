@@ -18,6 +18,6 @@ RUN \
 RUN gem install rb-inotify
 
 WORKDIR /app
-COPY TranscodeBot.rb /app/TranscodeBot.rb
+COPY transcode_bot.rb /app/transcode_bot.rb
 
-ENTRYPOINT ["ruby", "TranscodeBot.rb"]
+ENTRYPOINT ["ruby", "transcode_bot.rb"]
