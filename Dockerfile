@@ -16,11 +16,9 @@ ENV LD_LIBRARY_PATH /usr/local/cuda-11.4/targets/x86_64-linux/lib/
 RUN ldconfig
 
 # copy the app
-WORKDIR /app
-COPY transcode_bot.rb /app/transcode_bot.rb
-COPY Gemfile /app/Gemfile
-COPY Gemfile.lock /app/Gemfile.lock
+WORKDIR /transcode-bot
+COPY . /transcode-bot
 
 RUN bundle install
 
-ENTRYPOINT ["ruby", "transcode_bot.rb"]
+ENTRYPOINT ["ruby", "app/transcode_bot.rb"]
