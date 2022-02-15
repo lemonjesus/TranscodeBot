@@ -1,23 +1,26 @@
-FROM jrottenberg/ffmpeg:4.1-nvidia
+FROM jrottenberg/ffmpeg:4.1-nvidia AS ffmpeg
+FROM ruby:3.1.0
 
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
-RUN apt-get update
+# copy all of the libraries ffmpeg needs to run.
+COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=ffmpeg /usr/local/bin/ffprobe /usr/local/bin/ffprobe
+COPY --from=ffmpeg /usr/local/lib/*.so* /usr/local/lib/
+COPY --from=ffmpeg /usr/local/lib/*.a* /usr/local/lib/
+COPY --from=ffmpeg /usr/local/cuda-11.4/ /usr/local/cuda-11.4/
 
-RUN apt-get install -y openssl
-#RUN \curl -L https://get.rvm.io | bash -s stable
+ENV LD_LIBRARY_PATH /usr/local/cuda-11.4/targets/x86_64-linux/lib/
 
-RUN \
-  apt-get update && apt-get install -y --no-install-recommends --no-install-suggests curl bzip2 build-essential libssl-dev libreadline-dev zlib1g-dev && \
-  rm -rf /var/lib/apt/lists/* && \
-  curl -L https://github.com/rbenv/ruby-build/archive/v20200224.tar.gz | tar -zxvf - -C /tmp/ && \
-  cd /tmp/ruby-build-* && ./install.sh && cd / && \
-  ruby-build -v 2.6.5 /usr/local && rm -rfv /tmp/ruby-build-*
+RUN ldconfig
 
-RUN bundle install
-
+# copy the app
 WORKDIR /app
 COPY transcode_bot.rb /app/transcode_bot.rb
+COPY Gemfile /app/Gemfile
+COPY Gemfile.lock /app/Gemfile.lock
+
+RUN bundle install
 
 ENTRYPOINT ["ruby", "transcode_bot.rb"]
