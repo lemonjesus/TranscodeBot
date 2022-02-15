@@ -1,0 +1,42 @@
+# the folder TranscodeBot watches for new content (be sure to adjust the docker volumes appropriately)
+input_dir: "/input"
+
+# the folder TranscodeBot will put transcoded content (be sure to adjust the docker volumes appropriately)
+output_dir: "/output"
+
+# list of file extensions that TranscodeBot will endeavour to transcode
+transcode:
+  - mkv 
+  - mp4
+  - avi
+  - mpeg
+  - wmv
+
+# list of extensions to pass through without processing
+passthrough:
+  - srt
+  - sub
+  - idx
+  - jpg
+  - jpeg
+  - png
+
+# the logging level
+log_level: warn
+
+# beyond log_level, redirect ffmpeg's STDOUT to TranscodeBot's STDOUT for debugging
+ffmpeg_logs: false
+
+# the command used to transcode content ($input and $output are replaced with their respective file names)
+#force_cmd: "ffmpeg -y -i \"$input\" -map 0:v:0 -map 0:a -map 0:s? -max_muxing_queue_size 9999 -c:v libx265 -preset fast -x265-params crf=22:qcomp=0.8:aq-mode=1:aq_strength=1.0:qg-size=16:psy-rd=0.7:psy-rdoq=5.0:rdoq-level=1:merange=44 -c:a copy -c:s copy \"$output\""
+
+# if the bot should skip files that already exist in the output, or if it should transcode and overwrite them
+allow_overwrite: false
+
+# if the bot should transcode the files in the directory on start up or only transcode files that are added after start up
+enqueue_on_start: true
+
+# the user and group ID transcode bot will try to chown a file to. if any are left blank, it won't try
+#fmode: 0200
+#uid: 1000
+#gid: 1000
