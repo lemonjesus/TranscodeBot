@@ -15,7 +15,7 @@ RUN \
   cd /tmp/ruby-build-* && ./install.sh && cd / && \
   ruby-build -v 2.6.5 /usr/local && rm -rfv /tmp/ruby-build-*
 
-RUN gem install rb-inotify
+RUN bundle install
 
 WORKDIR /app
 COPY transcode_bot.rb /app/transcode_bot.rb
