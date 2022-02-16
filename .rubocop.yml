@@ -3,6 +3,7 @@ AllCops:
   NewCops: enable
   Exclude:
     - "bin/**/*"
+    - 'vendor/**/*'
 
 Layout/ParameterAlignment:
   EnforcedStyle: with_fixed_indentation
@@ -21,7 +22,13 @@ Layout/LineLength:
 Layout/SpaceInsideHashLiteralBraces:
   EnforcedStyle: no_space
 
+Lint/Void:
+  Enabled: false
+
 Metrics/AbcSize:
+  Enabled: false
+
+Metrics/BlockLength:
   Enabled: false
 
 Metrics/CyclomaticComplexity:

@@ -1,10 +1,9 @@
 require "logger"
 require "open3"
-require "rb-inotify"
 require "pathname"
 require "fileutils"
 
-require "config"
+require "./app/config"
 
 $stdout.sync = true
 
@@ -12,10 +11,10 @@ $logger = Logger.new $stdout
 $logger.level = Config.log_level
 $queue = []
 
-$logger.info "TranscodeBot started"
+$logger.error "TranscodeBot started"
 
 def can_transcode?(file)
-  Config.transcode.include? file.extname.downcase
+  Config.transcode.include? file.extname.downcase.delete_prefix(".")
 end
 
 def correct_permissions(file)
@@ -30,12 +29,12 @@ end
 
 def hevc?(file)
   output, status = Open3.capture2e("ffprobe -i \"#{file}\"")
-  return false unless status.zero?
+  return false unless status.exitstatus.zero?
   output.upcase.include? "HEVC"
 end
 
 def whitelisted?(file)
-  Config.passthrough.include? file.extname.downcase
+  Config.passthrough.include? file.extname.downcase.delete_prefix(".")
 end
 
 def mkdirs(file)
@@ -59,7 +58,7 @@ def transcode(input, output)
   command.gsub! "$input", input.to_s
   command.gsub! "$output", output.to_s
   _out, error, status = Open3.capture3(command)
-  unless status.zero?
+  unless status.exitstatus.zero?
     $logger.error "Error processing #{input}:"
     $logger.error error
     return false
@@ -92,6 +91,7 @@ def process_file(input_filename)
   # bypass if it's whitelisted or already hevc
   if should_passthrough? input_file
     $logger.info "passing through #{input_file}"
+    output_file = Pathname.new("#{Config.output_dir}/#{relative}")
     move input_file, output_file
     correct_permissions output_file
   elsif can_transcode? input_file
@@ -119,24 +119,31 @@ def enqueue_file(file)
   $queue << file
 end
 
-Thread.new do
+Dir["#{Config.input_dir}/**/*"].reject { |fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if Config.enqueue_on_start || Config.one_shot
+
+unless Config.one_shot
+  require "rb-inotify"
+
+  notifier = INotify::Notifier.new
+  notifier.watch(Config.input_dir, :close_write, :moved_to, :recursive) do |event|
+    if File.file?(event.absolute_name)
+      $logger.info("file created: #{event.absolute_name}")
+      enqueue_file(event.absolute_name)
+    end
+  end
+
+  notifier.run
+end
+
+worker = Thread.new do
   loop do
     file = $queue.shift
     process_file(file) if file
+    break if file.nil? && Config.one_shot
     sleep 1 unless file
   end
 end
 
-Dir["#{Config.input_dir}/**/*"].reject { |fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if Config.enqueue_on_start
-
-notifier = INotify::Notifier.new
-notifier.watch(Config.input_dir, :close_write, :moved_to, :recursive) do |event|
-  if File.file?(event.absolute_name)
-    $logger.info("file created: #{event.absolute_name}")
-    enqueue_file(event.absolute_name)
-  end
-end
-
-notifier.run
+worker.join
 
 $logger.error "Transcode Bot Exiting"
