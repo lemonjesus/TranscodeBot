@@ -10,14 +10,14 @@ cd TranscodeBot
 docker build . -t transcodebot
 ```
 
-This should go quick since it just needs to download FFMPEG, build Ruby, and copy some files.
+This should go quick since it just needs to download FFMPEG, Ruby, and copy some files.
 
 ## Usage
 TranscodeBot requires two volumes to be mounted for it to be useful.
 
 * `/input` - is your watch directory. This can be mounted as Read-Only. When a file is added to this directory, TranscodeBot will add it to its processing queue. 
 * `/output` - Where you want the movie to go. Because TranscodeBot preserves file paths (see below), you can make your output the same place you store and serve your media for a more automated pipeline.
-* `/app/config.yml` - Map this volume to your config file, if you have one.
+* `/app/config.yml` - **(optional)** Map this volume to your config file, if you have one.
 
 TranscodeBot will not back-transcode, meaning its `/output` directory is basically write-only.
 
@@ -65,4 +65,4 @@ Pull requests are always welcome.
 ## Credit
 * The FFMPEG image comes from jrottenberg/ffmpeg.
 * That image is compiled with libx264 and libx265, both of which are heavily used by this project.
-* Uses MRI Ruby 2.6.5
+* Uses MRI Ruby 3.0.1
