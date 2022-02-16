@@ -36,6 +36,9 @@ allow_overwrite: false
 # if the bot should transcode the files in the directory on start up or only transcode files that are added after start up
 enqueue_on_start: true
 
+# if the bot should transcode all of the files and then exit (implies enqueue_on_start: true)
+one_shot: false
+
 # the user and group ID transcode bot will try to chown a file to. if any are left blank, it won't try
 #fmode: 0200
 #uid: 1000
