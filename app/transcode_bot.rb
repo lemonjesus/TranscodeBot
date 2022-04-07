@@ -19,11 +19,11 @@ end
 
 def correct_permissions(file)
   if Config.fmode && Config.uid && Config.gid
-    $logger.info "correcting permissions on #{file}"
+    $logger.debug "correcting permissions on #{file}"
     File.chmod(Config.fmode.to_i(8), file.to_s) if Config.fmode
     File.chown(Config.uid.to_i, Config.gid.to_i, file.to_s) if Config.uid && Config.gid
   else
-    $logger.info "not correcting permissions on #{file} - FMODE, UID, or GID missing."
+    $logger.debug "not correcting permissions on #{file} - FMODE, UID, or GID missing."
   end
 end
 

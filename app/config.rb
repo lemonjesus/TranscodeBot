@@ -8,7 +8,7 @@ class Config
     output_dir: "/output",
     transcode: %w[mkv mp4 avi mpeg wmv],
     passthrough: %w[srt sub idx jpg jpeg png],
-    log_level: :warn,
+    log_level: :info,
     ffmpeg_logs: false,
     allow_overwrite: false,
     enqueue_on_start: true,
