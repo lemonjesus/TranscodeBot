@@ -22,7 +22,7 @@ passthrough:
   - png
 
 # the logging level
-log_level: warn
+log_level: info
 
 # beyond log_level, redirect ffmpeg's STDOUT to TranscodeBot's STDOUT for debugging
 ffmpeg_logs: false
