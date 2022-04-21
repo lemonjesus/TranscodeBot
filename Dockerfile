@@ -22,6 +22,6 @@ RUN bundle install
 
 # copy the app
 COPY . .
-
+RUN rm config.yml
 
 ENTRYPOINT ["ruby", "app/transcode_bot.rb"]
