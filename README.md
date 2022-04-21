@@ -17,12 +17,12 @@ TranscodeBot requires two volumes to be mounted for it to be useful.
 
 * `/input` - is your watch directory. This can be mounted as Read-Only. When a file is added to this directory, TranscodeBot will add it to its processing queue. 
 * `/output` - Where you want the movie to go. Because TranscodeBot preserves file paths (see below), you can make your output the same place you store and serve your media for a more automated pipeline.
-* `/app/config.yml` - **(optional)** Map this volume to your config file, if you have one.
+* `/app/config.yml` - **(optional)** Map this volume to your config file, if you have one. See the example file in the repo.
 
 TranscodeBot will not back-transcode, meaning its `/output` directory is basically write-only.
 
 ## Configuration
-All configuration options are documented in the example `config.yml` file with their defaults. In Docker, this file should be mapped as a volume to `/app/config.yml`. If you do not supply one, the defaults are used.
+All configuration options are documented in the example `config.yml.example` file with their defaults. In Docker, this file should be mapped as a volume to `/app/config.yml`. If you do not supply one, the defaults are used.
 
 ## Operation
 TranscodeBot watches its input directory for incoming media and mirrors it into an output directory after transcode. For example:
