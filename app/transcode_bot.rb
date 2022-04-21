@@ -127,17 +127,19 @@ end
 Dir["#{Config.input_dir}/**/*"].reject { |fn| File.directory?(fn) }.each { |fn| enqueue_file(fn) } if Config.enqueue_on_start || Config.one_shot
 
 unless Config.one_shot
-  require "rb-inotify"
+  Thread.new do
+    require "rb-inotify"
 
-  notifier = INotify::Notifier.new
-  notifier.watch(Config.input_dir, :close_write, :moved_to, :recursive) do |event|
-    if File.file?(event.absolute_name)
-      $logger.info("file created: #{event.absolute_name}")
-      enqueue_file(event.absolute_name)
+    notifier = INotify::Notifier.new
+    notifier.watch(Config.input_dir, :close_write, :moved_to, :recursive) do |event|
+      if File.file?(event.absolute_name)
+        $logger.info("file created: #{event.absolute_name}")
+        enqueue_file(event.absolute_name)
+      end
     end
-  end
 
-  notifier.run
+    notifier.run
+  end
 end
 
 worker = Thread.new do
