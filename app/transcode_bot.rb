@@ -13,6 +13,11 @@ $queue = []
 
 $logger.error "TranscodeBot started"
 
+$logger.debug "Loaded Configurations:"
+Config.load_config.each do |key, value|
+  $logger.debug "#{key}: #{value}"
+end
+
 def can_transcode?(file)
   Config.transcode.include? file.extname.downcase.delete_prefix(".")
 end
